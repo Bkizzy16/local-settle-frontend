@@ -181,12 +181,19 @@ function TradeDashboardInner() {
     const { currentUser } = useUser();
     const { offers, isLoading, updateOffer } = useOffers(apiFilters);
     const [offerStatusOverrides, setOfferStatusOverrides] = useState<Record<string, string>>({});
+    const [ownerPausedOffers, setOwnerPausedOffers] = useState<Record<string, Offer>>({});
 
     // Start with non-executed offers (type + assetCode already filtered by backend).
     // paymentMethod, minAmount, maxAmount, and sort are applied here client-side
     // because the backend does not yet support those query params.
     const visibleOffers = useMemo(() => {
-        let result = offers.map((offer) => ({
+        const availableOffers = new Map(offers.map((offer) => [offer.offerId, offer]));
+        for (const pausedOffer of Object.values(ownerPausedOffers)) {
+            if (pausedOffer.creatorId === currentUser?.userId && !availableOffers.has(pausedOffer.offerId)) {
+                availableOffers.set(pausedOffer.offerId, pausedOffer);
+            }
+        }
+        let result = Array.from(availableOffers.values()).map((offer) => ({
             ...offer,
             status: offerStatusOverrides[offer.offerId] ?? offer.status,
         })).filter((offer) => !offer.executed && (offer.status !== "paused" || offer.creatorId === currentUser?.userId));
@@ -223,7 +230,7 @@ function TradeDashboardInner() {
         }
 
         return sortOffers(result, filters.sort);
-    }, [offers, offerStatusOverrides, currentUser?.userId, filters.paymentMethod, filters.minAmount, filters.maxAmount, filters.sort]);
+    }, [offers, ownerPausedOffers, offerStatusOverrides, currentUser?.userId, filters.paymentMethod, filters.minAmount, filters.maxAmount, filters.sort]);
 
     // Derive available payment methods and assets from current offer set
     const availablePaymentMethods = useMemo(() => {
@@ -441,10 +448,21 @@ function TradeDashboardInner() {
                                                 onClick={async () => {
                                                     const nextStatus = offer.status === "paused" ? "active" : "paused";
                                                     setOfferStatusOverrides((previous) => ({ ...previous, [offer.offerId]: nextStatus }));
+                                                    if (nextStatus === "paused") setOwnerPausedOffers((previous) => ({ ...previous, [offer.offerId]: { ...offer, status: "paused" } }));
                                                     try {
                                                         await updateOffer(offer.offerId, { status: nextStatus });
+                                                        if (nextStatus === "active") setOwnerPausedOffers((previous) => {
+                                                            const next = { ...previous };
+                                                            delete next[offer.offerId];
+                                                            return next;
+                                                        });
                                                     } catch (error) {
                                                         setOfferStatusOverrides((previous) => {
+                                                            const next = { ...previous };
+                                                            delete next[offer.offerId];
+                                                            return next;
+                                                        });
+                                                        if (offer.status !== "paused") setOwnerPausedOffers((previous) => {
                                                             const next = { ...previous };
                                                             delete next[offer.offerId];
                                                             return next;
