@@ -13,6 +13,7 @@ import { useUser } from "@/features/user/presentation/context/UserContext";
 import { KycBanner } from "@/app/components/KycBanner";
 import { useWalletBalance } from "@/features/wallet/presentation/hooks/useWalletBalance";
 import { Offer } from "@/features/offer/models/offer";
+import { formatOfferPrice } from "@/features/offer/utils/format-offer-price";
 import { OfferFilters } from "@/features/offer/components/OfferFilters";
 import { buildOfferQuery } from "@/features/offer/utils/build-offer-query";
 import { PaymentMethodOption } from "@/features/paymentMethod/models/paymentMethod";
@@ -239,6 +240,7 @@ function TradeDashboardInner() {
         setFilter,
         setDraftFilter,
         applyDraftFilters,
+        applyPreset,
         resetDraftFilters,
         clearFilters,
         isFiltersDefault,
@@ -412,6 +414,7 @@ function TradeDashboardInner() {
                         onFilterChange={setFilter}
                         onDraftFilterChange={setDraftFilter}
                         onApplyDraft={applyDraftFilters}
+                        onApplyPreset={applyPreset}
                         onOpenDraft={resetDraftFilters}
                         onClearFilters={clearFilters}
                     />
@@ -447,9 +450,11 @@ function TradeDashboardInner() {
                             ];
 
                             return (
-                                <div
+                                <article
                                     key={offer.offerId}
-                                    className="flex min-w-0 w-full flex-col xl:flex-row bg-[#0D1D2C] border border-[#263949] rounded-2xl p-4 sm:p-6 hover:border-[#55D6BE] hover:bg-[#1A1A1C] transition-all duration-300 group gap-6 xl:gap-0"
+                                    aria-labelledby={`offer-title-${offer.offerId}`}
+                                    tabIndex={0}
+                                    className="flex min-w-0 w-full flex-col xl:flex-row bg-[#0D1D2C] border border-[#263949] rounded-2xl p-4 sm:p-6 hover:border-[#55D6BE] hover:bg-[#1A1A1C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55D6BE] transition-all duration-300 group gap-6 xl:gap-0"
                                 >
                                     {/* Left: Identity and Capacity */}
                                     <div className="flex flex-col gap-6 xl:w-[40%]">
@@ -466,7 +471,7 @@ function TradeDashboardInner() {
                                                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#55D6BE] border-2 border-[#0D1D2C] rounded-full"></div>
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-white font-bold text-base">{userFound[offer.creatorId]?.alias || "Unknown"}</span>
+                                                <h3 id={`offer-title-${offer.offerId}`} className="text-white font-bold text-base">Offer from {userFound[offer.creatorId]?.alias || "Unknown"}</h3>
                                                 <CounterpartySummary user={userFound[offer.creatorId]} />
                                             </div>
                                         </div>
@@ -509,9 +514,8 @@ function TradeDashboardInner() {
                                             <span className="text-[#A1969C] text-[10px] font-bold tracking-widest uppercase">Unit Price</span>
                                             <div className="flex items-baseline gap-1.5">
                                                 <span className="text-[#55D6BE] font-bold text-[32px] tabular-nums tracking-tight leading-none">
-                                                    {parseFloat(offer.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {formatOfferPrice(offer.price, offer.fiatCurrency ?? offer.currency)}
                                                 </span>
-                                                <span className="text-[#9BABB7] font-bold text-sm">USD</span>
                                             </div>
                                         </div>
 <button
@@ -543,7 +547,8 @@ function TradeDashboardInner() {
                                                 }
                                                 setSelectedOffer(offer);
                                             }}
-                                            className={`w-full max-w-[220px] py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 ${isVerified
+                                            aria-label={`${tab === "Buy" ? "Buy from" : "Sell to"} ${userFound[offer.creatorId]?.alias || "this trader"}`}
+                                            className={`w-full max-w-[220px] py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55D6BE] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D1D2C] ${isVerified
                                                 ? "bg-[#55D6BE] text-black hover:shadow-[0_0_20px_rgba(85,214,190,0.25)] hover:scale-[1.02] active:scale-[0.98]"
                                                 : "bg-gray-700 text-gray-400 cursor-not-allowed"
                                                 }`}
@@ -584,7 +589,7 @@ function TradeDashboardInner() {
                                             </button>
                                         )}
                                     </div>
-                                </div>
+                                </article>
                             );
                         })}
                     </div>
